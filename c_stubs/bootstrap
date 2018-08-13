@@ -1,0 +1,7 @@
+swig -csharp -c++ recognition.i
+#cp *.cs ../../../Unity/Ciocco/Assets/Scripts/  && cp  build/librecognition.dylib ../../../Unity/Ciocco/Assets/Plugins/recognition.bundle
+
+#build unity with no dylib or bundle in Assets/Plugins dir
+#compile the library and copy librecognition.dylib somewhere (preferably in the simulator build directory)
+#export DYLD_LIBRARY_PATH to the dir where you copy the library in the step before
+#run the simulator

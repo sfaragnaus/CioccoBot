@@ -10,8 +10,50 @@
 
 
 public class recognition {
-  public static void prova(SWIGTYPE_p_float a) {
-    recognitionPINVOKE.prova(SWIGTYPE_p_float.getCPtr(a));
+  public static SWIGTYPE_p_float new_floatArray(int nelements) {
+    global::System.IntPtr cPtr = recognitionPINVOKE.new_floatArray(nelements);
+    SWIGTYPE_p_float ret = (cPtr == global::System.IntPtr.Zero) ? null : new SWIGTYPE_p_float(cPtr, false);
+    return ret;
+  }
+
+  public static void delete_floatArray(SWIGTYPE_p_float ary) {
+    recognitionPINVOKE.delete_floatArray(SWIGTYPE_p_float.getCPtr(ary));
+  }
+
+  public static float floatArray_getitem(SWIGTYPE_p_float ary, int index) {
+    float ret = recognitionPINVOKE.floatArray_getitem(SWIGTYPE_p_float.getCPtr(ary), index);
+    return ret;
+  }
+
+  public static void floatArray_setitem(SWIGTYPE_p_float ary, int index, float value) {
+    recognitionPINVOKE.floatArray_setitem(SWIGTYPE_p_float.getCPtr(ary), index, value);
+  }
+
+  public static SWIGTYPE_p_unsigned_char new_pixelArray(int nelements) {
+    global::System.IntPtr cPtr = recognitionPINVOKE.new_pixelArray(nelements);
+    SWIGTYPE_p_unsigned_char ret = (cPtr == global::System.IntPtr.Zero) ? null : new SWIGTYPE_p_unsigned_char(cPtr, false);
+    return ret;
+  }
+
+  public static void delete_pixelArray(SWIGTYPE_p_unsigned_char ary) {
+    recognitionPINVOKE.delete_pixelArray(SWIGTYPE_p_unsigned_char.getCPtr(ary));
+  }
+
+  public static byte pixelArray_getitem(SWIGTYPE_p_unsigned_char ary, int index) {
+    byte ret = recognitionPINVOKE.pixelArray_getitem(SWIGTYPE_p_unsigned_char.getCPtr(ary), index);
+    return ret;
+  }
+
+  public static void pixelArray_setitem(SWIGTYPE_p_unsigned_char ary, int index, byte value) {
+    recognitionPINVOKE.pixelArray_setitem(SWIGTYPE_p_unsigned_char.getCPtr(ary), index, value);
+  }
+
+  public static void kinematicInfo(SWIGTYPE_p_float speed, SWIGTYPE_p_float acc, SWIGTYPE_p_float angular, SWIGTYPE_p_float angularAcci, float delta) {
+    recognitionPINVOKE.kinematicInfo(SWIGTYPE_p_float.getCPtr(speed), SWIGTYPE_p_float.getCPtr(acc), SWIGTYPE_p_float.getCPtr(angular), SWIGTYPE_p_float.getCPtr(angularAcci), delta);
+  }
+
+  public static void captureImage(SWIGTYPE_p_unsigned_char pixelData, int w, int h, int stride, bool isLeft) {
+    recognitionPINVOKE.captureImage(SWIGTYPE_p_unsigned_char.getCPtr(pixelData), w, h, stride, isLeft);
   }
 
 }

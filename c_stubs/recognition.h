@@ -1,6 +1,7 @@
 #ifndef _RECOGNITION_EXPORTS_H__
 #define _RECOGNITION_EXPORTS_H__
 
-extern "C" void /*__declspec(dllexport)*/ prova(float *a);
+extern void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, float delta);
+extern void captureImage(unsigned char *pixelData, int w, int h, bool isLeft);
 
 #endif /* _RECOGNITION_EXPORTS_H__ */

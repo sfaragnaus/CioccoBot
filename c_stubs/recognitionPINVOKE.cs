@@ -187,6 +187,33 @@ class recognitionPINVOKE {
   }
 
 
-  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_prova")]
-  public static extern void prova(global::System.Runtime.InteropServices.HandleRef jarg1);
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_new_floatArray")]
+  public static extern global::System.IntPtr new_floatArray(int jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_delete_floatArray")]
+  public static extern void delete_floatArray(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_floatArray_getitem")]
+  public static extern float floatArray_getitem(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_floatArray_setitem")]
+  public static extern void floatArray_setitem(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, float jarg3);
+
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_new_pixelArray")]
+  public static extern global::System.IntPtr new_pixelArray(int jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_delete_pixelArray")]
+  public static extern void delete_pixelArray(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_pixelArray_getitem")]
+  public static extern byte pixelArray_getitem(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_pixelArray_setitem")]
+  public static extern void pixelArray_setitem(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, byte jarg3);
+
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_kinematicInfo")]
+  public static extern void kinematicInfo(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2, global::System.Runtime.InteropServices.HandleRef jarg3, global::System.Runtime.InteropServices.HandleRef jarg4, float jarg5);
+
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_captureImage")]
+  public static extern void captureImage(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, int jarg3, int jarg4, bool jarg5);
 }
