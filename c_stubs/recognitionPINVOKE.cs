@@ -215,5 +215,5 @@ class recognitionPINVOKE {
   public static extern void kinematicInfo(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2, global::System.Runtime.InteropServices.HandleRef jarg3, global::System.Runtime.InteropServices.HandleRef jarg4, float jarg5);
 
   [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_captureImage")]
-  public static extern void captureImage(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, int jarg3, int jarg4, bool jarg5);
+  public static extern void captureImage(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, int jarg3, int jarg4, bool jarg5, float jarg6);
 }

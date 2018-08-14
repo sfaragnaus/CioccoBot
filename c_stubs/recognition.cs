@@ -52,8 +52,8 @@ public class recognition {
     recognitionPINVOKE.kinematicInfo(SWIGTYPE_p_float.getCPtr(speed), SWIGTYPE_p_float.getCPtr(acc), SWIGTYPE_p_float.getCPtr(angular), SWIGTYPE_p_float.getCPtr(angularAcci), delta);
   }
 
-  public static void captureImage(SWIGTYPE_p_unsigned_char pixelData, int w, int h, int stride, bool isLeft) {
-    recognitionPINVOKE.captureImage(SWIGTYPE_p_unsigned_char.getCPtr(pixelData), w, h, stride, isLeft);
+  public static void captureImage(SWIGTYPE_p_unsigned_char pixelData, int w, int h, int stride, bool isLeft, float delta) {
+    recognitionPINVOKE.captureImage(SWIGTYPE_p_unsigned_char.getCPtr(pixelData), w, h, stride, isLeft, delta);
   }
 
 }

@@ -332,7 +332,7 @@ static void pixelArray_setitem(unsigned char *ary, int index, unsigned char valu
 
 
 extern void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, float delta);
-extern void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLeft);
+extern void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLeft, float delta);
 
 
 #ifdef __cplusplus
@@ -447,19 +447,21 @@ SWIGEXPORT void SWIGSTDCALL CSharp_kinematicInfo(void * jarg1, void * jarg2, voi
 }
 
 
-SWIGEXPORT void SWIGSTDCALL CSharp_captureImage(void * jarg1, int jarg2, int jarg3, int jarg4, unsigned int jarg5) {
+SWIGEXPORT void SWIGSTDCALL CSharp_captureImage(void * jarg1, int jarg2, int jarg3, int jarg4, unsigned int jarg5, float jarg6) {
   unsigned char *arg1 = (unsigned char *) 0 ;
   int arg2 ;
   int arg3 ;
   int arg4 ;
   bool arg5 ;
+  float arg6 ;
   
   arg1 = (unsigned char *)jarg1; 
   arg2 = (int)jarg2; 
   arg3 = (int)jarg3; 
   arg4 = (int)jarg4; 
   arg5 = jarg5 ? true : false; 
-  captureImage(arg1,arg2,arg3,arg4,arg5);
+  arg6 = (float)jarg6; 
+  captureImage(arg1,arg2,arg3,arg4,arg5,arg6);
 }
 
 

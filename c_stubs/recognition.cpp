@@ -10,7 +10,7 @@ void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, 
 	*angularAcc = 0;
 }
 
-void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLeft)
+void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLeft, float delta)
 {
 	cv::Mat cam(h, w, CV_8UC3, pixelData);
 	cv::Mat flipped;
