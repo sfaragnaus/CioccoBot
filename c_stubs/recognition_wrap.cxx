@@ -331,8 +331,8 @@ static void pixelArray_setitem(unsigned char *ary, int index, unsigned char valu
 }
 
 
-extern void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, float delta);
-extern void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLeft, float delta);
+void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, float delta);
+void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLeft, float delta);
 
 
 #ifdef __cplusplus

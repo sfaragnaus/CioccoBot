@@ -16,6 +16,6 @@ void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLef
 	cv::Mat flipped;
 	cv::flip(cam, flipped, 0);
 	cv::cvtColor(flipped, flipped, cv::COLOR_RGB2BGR);
-	
-	//cv::imwrite( isLeft?"leftcam.jpg":"rightcam.jpg", flipped);	//DO NOT ENABLE THIS UNLESS FOR TESTING PURPOSE!
+
+	//cv::imwrite(isLeft ? "leftcam.jpg" : "rightcam.jpg", flipped);	//DO NOT ENABLE THIS UNLESS FOR TESTING PURPOSE!
 }
