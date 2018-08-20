@@ -57,6 +57,8 @@ This error codes will be written in the log file unless the program crashes
 #define LOG_FILE_NAME    "log_recognition_dll.txt"								// Name of the log file
 #define DATE_TIME_FORMAT "%y-%m-%d %I:%M%p "									// Format to use to write date and time to the log file
 
+#define LOG_DIV_LINE writeLog(string("-------------------------------------------------------------------------------------"), NO_LOG);
+
 // Set of possible log levels
 enum LOG_LINE_LEVEL { EVERYTHING_ENABLED	=   0 ,
 					  DEBUG					=   5 ,
@@ -65,7 +67,7 @@ enum LOG_LINE_LEVEL { EVERYTHING_ENABLED	=   0 ,
 					  NO_LOG				= 100 };
 
 // LOG_LEVEL indicates the minimum line level for which it will be written a line to the log file
-const enum LOG_LINE_LEVEL LOG_LEVEL = DEBUG;
+const enum LOG_LINE_LEVEL LOG_LEVEL = WARNING;
 
 // getCurrentDateTime() returns a string containing current date and time formatted like DATE_TIME_FORMAT
 std::string getCurrentDateTime();
@@ -76,6 +78,9 @@ void writeLog(std::string & text, enum LOG_LINE_LEVEL llevel = DEBUG);
 // Prototype for the fuctions used to detect people
 void detectPeople(cv::Mat);
 void setup();
+
+void setupClassifier(cv::CascadeClassifier & classifier, std::string model, std::string cname_for_log);
+std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier & cclassifier, std::string short_name_for_log, unsigned int * tot_det, int ecode);
 // -------------------------------------------------------------------------------------------------
 
 void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, float delta)
@@ -122,82 +127,21 @@ void detectPeople(cv::Mat frame_in)
 	vector<Rect> fb_detected;
 	vector<Rect> ub_detected;
 	vector<Rect> lb_detected;
+
+	static unsigned int tot_det_ff = 0;
+	static unsigned int tot_det_pf = 0;
+	static unsigned int tot_det_fb = 0;
+	static unsigned int tot_det_ub = 0;
+	static unsigned int tot_det_lb = 0;
 	
 	// this code section must stay here untill simulator doesn't call setup()
 	{
 		// Quit application unless loading classifier models can be completed
-		if (USING_FF_CLASSIFIER && ff_classifier.empty())
-		{	
-			string temp_str = string("trying to load: ") + string(FRONTAL_FACE_MODEL);
-			writeLog(temp_str);
-
-			if (!ff_classifier.load(FRONTAL_FACE_MODEL))
-			{
-				writeLog(string("Error loading ff_model!"), ERROR);
-				assert(false);
-			}
-			else { writeLog(string("ff_model loaded correctly")); }
-		}
-		
-		if (USING_PF_CLASSIFIER && pf_classifier.empty())
-		{
-			string temp_str = string("trying to load: ") + string(PROFILE_FACE_MODEL);
-			writeLog(temp_str);
-
-			if (!pf_classifier.load(PROFILE_FACE_MODEL))
-			{
-				writeLog(string("Error loading pf_model!"), ERROR);
-				assert(false);
-			}
-			else { writeLog(string("pf_model loaded correctly")); }
-
-			writeLog(string("-------------------------------------------------------------------------------------"));
-		}
-
-		if (USING_FB_CLASSIFIER && fb_classifier.empty())
-		{
-			string temp_str = string("trying to load: ") + string(FULL_BODY_MODEL);
-			writeLog(temp_str);
-
-			if (!fb_classifier.load(FULL_BODY_MODEL))
-			{
-				writeLog(string("Error loading fb_model!"), ERROR);
-				assert(false);
-			}
-			else { writeLog(string("fb_model loaded correctly")); }
-
-			writeLog(string("-------------------------------------------------------------------------------------"));
-		}
-
-		if (USING_UB_CLASSIFIER && ub_classifier.empty())
-		{
-			string temp_str = string("trying to load: ") + string(UPPER_BODY_MODEL);
-			writeLog(temp_str);
-
-			if (!ub_classifier.load(UPPER_BODY_MODEL))
-			{
-				writeLog(string("Error loading ub_model!"), ERROR);
-				assert(false);
-			}
-			else { writeLog(string("ub_model loaded correctly")); }
-
-			writeLog(string("-------------------------------------------------------------------------------------"));
-		}
-
-		if (USING_LB_CLASSIFIER && lb_classifier.empty())
-		{
-			string temp_str = string("trying to load: ") + string(LOWER_BODY_MODEL);
-			writeLog(temp_str);
-
-			if (!lb_classifier.load(LOWER_BODY_MODEL))
-			{
-				writeLog(string("Error loading lb_model!"), ERROR);
-				assert(false);
-			}
-			else { writeLog(string("lb_model loaded correctly")); }
-
-			writeLog(string("-------------------------------------------------------------------------------------"));
-		}
+		if (USING_FF_CLASSIFIER && ff_classifier.empty()) setupClassifier(ff_classifier, FRONTAL_FACE_MODEL, "ff_model");
+		if (USING_PF_CLASSIFIER && pf_classifier.empty()) setupClassifier(pf_classifier, PROFILE_FACE_MODEL, "pf_model");
+		if (USING_FB_CLASSIFIER && fb_classifier.empty()) setupClassifier(fb_classifier, FULL_BODY_MODEL,    "fb_model");
+		if (USING_UB_CLASSIFIER && ub_classifier.empty()) setupClassifier(ub_classifier, UPPER_BODY_MODEL,   "ub_model");
+		if (USING_LB_CLASSIFIER && lb_classifier.empty()) setupClassifier(lb_classifier, LOWER_BODY_MODEL,   "lb_model");
 	}
 	
 	if (frame_in.empty())
@@ -210,221 +154,15 @@ void detectPeople(cv::Mat frame_in)
 	equalizeHist(frame_in, frame_in);
 	writeLog(string("converted input image from BGR to grayscale"));
 
-	if (USING_FF_CLASSIFIER)
-	{
-		ostringstream oss;
-
-		try
-		{
-			//ff_classifier.detectMultiScale(frame_in, ff_detected, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(30, 30));
-			ff_classifier.detectMultiScale(frame_in, ff_detected, 1.1, 2);
-			
-			oss << "detected ";
-			oss << ff_detected.size();
-			oss << " faces using ff classifier";
-			writeLog(oss.str());
-		}
-		catch (cv::Exception e)
-		{
-			oss << "ff_classifier.detectMultiScale thrown: ";
-			oss << e.err;
-			writeLog(oss.str(), ERROR);
-		}
-		catch (...)
-		{
-			writeLog(string("Something wrong appened (error code: 101)..."), ERROR);
-		}
-
-		static unsigned int tot_det_ff = 0;
-
-		for (size_t i = 0; i < ff_detected.size(); ++i)
-		{
-			ostringstream file_name;
-			file_name << "detection_ff_";
-			file_name << (++tot_det_ff < 10 ? "0" : "");
-			file_name << tot_det_ff;
-			file_name << ".jpg";
-
-			if (LOG_LEVEL == EVERYTHING_ENABLED)
-			{
-				imwrite(file_name.str(), frame_in(ff_detected.at(i)));
-				writeLog("written: " + file_name.str());
-			}
-		}
-	}
-
-	if (USING_PF_CLASSIFIER)
-	{
-		ostringstream oss;
-
-		try
-		{
-			//pf_classifier.detectMultiScale(frame_in, ff_faces, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(30, 30));
-			pf_classifier.detectMultiScale(frame_in, pf_detected, 1.1, 2);
-			
-			oss << "detected ";
-			oss << ff_detected.size();
-			oss << " faces using ff classifier";
-			writeLog(oss.str());
-		}
-		catch (cv::Exception e)
-		{
-			oss << "pf_classifier.detectMultiScale thrown: ";
-			oss << e.err;
-			writeLog(oss.str(), ERROR);
-		}
-		catch (...)
-		{
-			writeLog(string("Something wrong appened (error code: 102)..."), ERROR);
-		}
-
-		static unsigned int tot_det_pf = 0;
-
-		for (size_t i = 0; i < pf_detected.size(); ++i)
-		{
-			ostringstream file_name;
-			file_name << "detection_pf_";
-			file_name << (++tot_det_pf < 10 ? "0" : "");
-			file_name << tot_det_pf;
-			file_name << ".jpg";
-
-			if (LOG_LEVEL == EVERYTHING_ENABLED)
-			{
-				imwrite(file_name.str(), frame_in(pf_detected.at(i)));
-				writeLog("written: " + file_name.str());
-			}
-		}
-	}
-
-	if (USING_FB_CLASSIFIER)
-	{
-		ostringstream oss;
-		try
-		{
-			//fb_classifier.detectMultiScale(frame_in, fb_detected, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(30, 30));
-			fb_classifier.detectMultiScale(frame_in, fb_detected, 1.1, 2);
-			
-			oss << "detected ";
-			oss << fb_detected.size();
-			oss << " bodies using fb classifier";
-			writeLog(oss.str());
-		}
-		catch (cv::Exception e)
-		{
-			oss << "fb_classifier.detectMultiScale thrown: ";
-			oss << e.err;
-			writeLog(oss.str(), ERROR);
-		}
-		catch (...)
-		{
-			writeLog(string("Something wrong appened (error code: 103)..."), ERROR);
-		}
-
-		static unsigned int tot_det_fb = 0;
-
-		for (size_t i = 0; i < fb_detected.size(); ++i)
-		{
-			ostringstream file_name;
-			file_name << "detection_fb_";
-			file_name << (++tot_det_fb < 10 ? "0" : "");
-			file_name << tot_det_fb;
-			file_name << ".jpg";
-
-			if (LOG_LEVEL == EVERYTHING_ENABLED)
-			{
-				imwrite(file_name.str(), frame_in(fb_detected.at(i)));
-				writeLog("written: " + file_name.str());
-			}
-		}
-	}
-	
-	if (USING_UB_CLASSIFIER)
-	{
-		ostringstream oss;
-		try
-		{
-			//ub_classifier.detectMultiScale(frame_in, ub_detected, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(30, 30));
-			ub_classifier.detectMultiScale(frame_in, ub_detected, 1.1, 2);
-
-			oss << "detected ";
-			oss << ub_detected.size();
-			oss << " bodies using ub classifier";
-			writeLog(oss.str());
-		}
-		catch (cv::Exception e)
-		{
-			oss << "ub_classifier.detectMultiScale thrown: ";
-			oss << e.err;
-			writeLog(oss.str(), ERROR);
-		}
-		catch (...)
-		{
-			writeLog(string("Something wrong appened (error code: 104)..."), ERROR);
-		}
-
-		static unsigned int tot_det_ub = 0;
-
-		for (size_t i = 0; i < ub_detected.size(); ++i)
-		{
-			ostringstream file_name;
-			file_name << "detection_ub_";
-			file_name << (++tot_det_ub < 10 ? "0" : "");
-			file_name << tot_det_ub;
-			file_name << ".jpg";
-
-			if (LOG_LEVEL == EVERYTHING_ENABLED)
-			{
-				imwrite(file_name.str(), frame_in(ub_detected.at(i)));
-				writeLog("written: " + file_name.str());
-			}
-		}
-	}
-
-	if (USING_LB_CLASSIFIER)
-	{
-		ostringstream oss;
-		try
-		{
-			//lb_classifier.detectMultiScale(frame_in, lb_detected, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(30, 30));
-			lb_classifier.detectMultiScale(frame_in, lb_detected, 1.1, 2);
-
-			oss << "detected ";
-			oss << lb_detected.size();
-			oss << " bodies using lb classifier";
-			writeLog(oss.str());
-		}
-		catch (cv::Exception e)
-		{
-			oss << "lb_classifier.detectMultiScale thrown: ";
-			oss << e.err;
-			writeLog(oss.str(), ERROR);
-		}
-		catch (...)
-		{
-			writeLog(string("Something wrong appened (error code: 105)..."), ERROR);
-		}
-
-		static unsigned int tot_det_lb = 0;
-
-		for (size_t i = 0; i < lb_detected.size(); ++i)
-		{
-			ostringstream file_name;
-			file_name << "detection_lb_";
-			file_name << (++tot_det_lb < 10 ? "0" : "");
-			file_name << tot_det_lb;
-			file_name << ".jpg";
-
-			if (LOG_LEVEL == EVERYTHING_ENABLED)
-			{
-				imwrite(file_name.str(), frame_in(lb_detected.at(i)));
-				writeLog("written: " + file_name.str());
-			}
-		}
-	}
+	if (USING_FF_CLASSIFIER) ff_detected = detectWithClassifier(frame_in, ff_classifier, "ff", &tot_det_ff, 101);
+	if (USING_PF_CLASSIFIER) pf_detected = detectWithClassifier(frame_in, pf_classifier, "pf", &tot_det_pf, 102);
+	if (USING_FB_CLASSIFIER) fb_detected = detectWithClassifier(frame_in, fb_classifier, "fb", &tot_det_fb, 103);
+	if (USING_UB_CLASSIFIER) ub_detected = detectWithClassifier(frame_in, ub_classifier, "ub", &tot_det_ub, 104);
+	if (USING_LB_CLASSIFIER) lb_detected = detectWithClassifier(frame_in, lb_classifier, "lb", &tot_det_lb, 105);
 
 	//imwrite("output_image.jpg", frame_out);
 
-	writeLog(string("-------------------------------------------------------------------------------------"));
+	LOG_DIV_LINE
 }
 
 void writeLog(std::string & text, enum LOG_LINE_LEVEL llevel)
@@ -449,7 +187,7 @@ void writeLog(std::string & text, enum LOG_LINE_LEVEL llevel)
 		break;
 	case NO_LOG:
 	default: // Shouldn't be triggered
-		log_level = "[]";
+		log_level = "[] ";
 		break;
 	}
 	
@@ -481,11 +219,102 @@ void setup()
 {
 	using namespace std;
 
-	ofstream log_file(LOG_FILE_NAME, ios_base::out);
-	log_file << endl;
+	if (LOG_LEVEL < NO_LOG)
+	{
+		ofstream log_file(LOG_FILE_NAME, ios_base::out);
+		log_file << endl;
+	}
 
 	// 0 - open log file
 	// 1 - setup the classifiers
 	// 2 - complete initial setup
+}
+
+void setupClassifier(cv::CascadeClassifier & cclassifier, std::string model, std::string cname_for_log)
+{
+	using namespace std;
+
+	ostringstream oss;
+	oss << "trying to load: ";
+	oss << model;
+	writeLog(oss.str());
+
+	// reset ostringstream (oss)
+	oss.str(""); oss.clear();
+
+	if (!cclassifier.load(model))
+	{
+		oss << "Error loading";
+		oss << cname_for_log;
+		oss << "!";
+		writeLog(oss.str(), ERROR);
+		
+		assert(false);
+	}
+	else
+	{
+		oss << cname_for_log;
+		oss << " loaded correctly";
+		writeLog(oss.str());
+	}
+
+	LOG_DIV_LINE
+}
+
+std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier & cclassifier, std::string short_name_for_log, unsigned int * tot_det, int ecode)
+{
+	using namespace std;
+	using namespace cv;
+
+	ostringstream oss;
+	vector<Rect> detected;
+
+	try
+	{
+		//lb_classifier.detectMultiScale(frame, lb_detected, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(30, 30));
+		cclassifier.detectMultiScale(frame, detected, 1.1, 2);
+
+		oss << "detected ";
+		oss << detected.size();
+		oss << " body parts using ";
+		oss << short_name_for_log;
+		oss << " classifier";
+		writeLog(oss.str());
+	}
+	catch (cv::Exception e)
+	{
+		oss << short_name_for_log;
+		oss << "_classifier.detectMultiScale thrown: ";
+		oss << e.err;
+		writeLog(oss.str(), ERROR);
+	}
+	catch (...)
+	{
+		oss << "Something wrong appened (error code: ";
+		oss << ecode;
+		oss << ")...";
+
+		writeLog(oss.str(), ERROR);
+	}
+
+	for (size_t i = 0; i < detected.size(); ++i)
+	{
+		ostringstream file_name;
+		file_name << "detection_";
+		file_name << short_name_for_log;
+		file_name << "_";
+		file_name << (*tot_det < 100 ? "0" : "");
+		file_name << (++(*tot_det) < 10 ? "0" : "");
+		file_name << *tot_det;
+		file_name << ".jpg";
+
+		if (LOG_LEVEL == EVERYTHING_ENABLED)
+		{
+			imwrite(file_name.str(), frame(detected.at(i)));
+			writeLog("written: " + file_name.str());
+		}
+	}
+
+	return detected;
 }
 // -------------------------------------------------------------------------------------------------
