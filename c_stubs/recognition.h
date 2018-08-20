@@ -8,7 +8,8 @@
 #endif*/
 #define TESTFUNCDLL_API __declspec(dllexport)
 
- void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, float delta);
- void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLeft, float delta);
+bool setup(void);
+void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, float delta);
+void captureImage(unsigned char *pixelDataSx, unsigned char *pixelDataDx, int w, int h, int stride, float delta);
 
 #endif /* _RECOGNITION_EXPORTS_H__ */

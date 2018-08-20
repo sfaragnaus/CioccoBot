@@ -48,12 +48,17 @@ public class recognition {
     recognitionPINVOKE.pixelArray_setitem(SWIGTYPE_p_unsigned_char.getCPtr(ary), index, value);
   }
 
+  public static bool setup() {
+    bool ret = recognitionPINVOKE.setup();
+    return ret;
+  }
+
   public static void kinematicInfo(SWIGTYPE_p_float speed, SWIGTYPE_p_float acc, SWIGTYPE_p_float angular, SWIGTYPE_p_float angularAcci, float delta) {
     recognitionPINVOKE.kinematicInfo(SWIGTYPE_p_float.getCPtr(speed), SWIGTYPE_p_float.getCPtr(acc), SWIGTYPE_p_float.getCPtr(angular), SWIGTYPE_p_float.getCPtr(angularAcci), delta);
   }
 
-  public static void captureImage(SWIGTYPE_p_unsigned_char pixelData, int w, int h, int stride, bool isLeft, float delta) {
-    recognitionPINVOKE.captureImage(SWIGTYPE_p_unsigned_char.getCPtr(pixelData), w, h, stride, isLeft, delta);
+  public static void captureImage(SWIGTYPE_p_unsigned_char pixelDataSx, SWIGTYPE_p_unsigned_char pixelDataDx, int w, int h, int stride, float delta) {
+    recognitionPINVOKE.captureImage(SWIGTYPE_p_unsigned_char.getCPtr(pixelDataSx), SWIGTYPE_p_unsigned_char.getCPtr(pixelDataDx), w, h, stride, delta);
   }
 
 }

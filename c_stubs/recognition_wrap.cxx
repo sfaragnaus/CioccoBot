@@ -331,8 +331,9 @@ static void pixelArray_setitem(unsigned char *ary, int index, unsigned char valu
 }
 
 
+bool setup(void);
 void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, float delta);
-void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLeft, float delta);
+void captureImage(unsigned char *pixelDataSx, unsigned char *pixelDataDx, int w, int h, int stride, float delta);
 
 
 #ifdef __cplusplus
@@ -431,6 +432,16 @@ SWIGEXPORT void SWIGSTDCALL CSharp_pixelArray_setitem(void * jarg1, int jarg2, u
 }
 
 
+SWIGEXPORT unsigned int SWIGSTDCALL CSharp_setup() {
+  unsigned int jresult ;
+  bool result;
+  
+  result = (bool)setup();
+  jresult = result; 
+  return jresult;
+}
+
+
 SWIGEXPORT void SWIGSTDCALL CSharp_kinematicInfo(void * jarg1, void * jarg2, void * jarg3, void * jarg4, float jarg5) {
   float *arg1 = (float *) 0 ;
   float *arg2 = (float *) 0 ;
@@ -447,19 +458,19 @@ SWIGEXPORT void SWIGSTDCALL CSharp_kinematicInfo(void * jarg1, void * jarg2, voi
 }
 
 
-SWIGEXPORT void SWIGSTDCALL CSharp_captureImage(void * jarg1, int jarg2, int jarg3, int jarg4, unsigned int jarg5, float jarg6) {
+SWIGEXPORT void SWIGSTDCALL CSharp_captureImage(void * jarg1, void * jarg2, int jarg3, int jarg4, int jarg5, float jarg6) {
   unsigned char *arg1 = (unsigned char *) 0 ;
-  int arg2 ;
+  unsigned char *arg2 = (unsigned char *) 0 ;
   int arg3 ;
   int arg4 ;
-  bool arg5 ;
+  int arg5 ;
   float arg6 ;
   
   arg1 = (unsigned char *)jarg1; 
-  arg2 = (int)jarg2; 
+  arg2 = (unsigned char *)jarg2; 
   arg3 = (int)jarg3; 
   arg4 = (int)jarg4; 
-  arg5 = jarg5 ? true : false; 
+  arg5 = (int)jarg5; 
   arg6 = (float)jarg6; 
   captureImage(arg1,arg2,arg3,arg4,arg5,arg6);
 }
