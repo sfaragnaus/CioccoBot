@@ -1,4 +1,4 @@
-/* USAGE INFOS
+/* USAGE INFOS (IT)
 
  - Nella directory in cui è presente questa libreria dev'essere presente una directory 'haarcascades\'
     contenente i file xml con le informazioni necessarie ai vari classificatori
@@ -34,7 +34,6 @@ This error codes will be written in the log file unless the program crashes
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
-// -------------------------------------------------------------------------------------------------
 // Inclusion of some opencv libraries
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
@@ -47,11 +46,11 @@ This error codes will be written in the log file unless the program crashes
 #define UPPER_BODY_MODEL   "haarcascades\\haarcascade_upperbody.xml"
 #define LOWER_BODY_MODEL   "haarcascades\\haarcascade_lowerbody.xml"
 
-#define USING_FF_CLASSIFIER true
-#define USING_PF_CLASSIFIER true
+#define USING_FF_CLASSIFIER false
+#define USING_PF_CLASSIFIER false
 #define USING_FB_CLASSIFIER false
 #define USING_UB_CLASSIFIER true
-#define USING_LB_CLASSIFIER true
+#define USING_LB_CLASSIFIER false
 
 // LOG FILE
 #define LOG_FILE_NAME    "log_recognition_dll.txt"								// Name of the log file
@@ -75,26 +74,56 @@ std::string getCurrentDateTime();
 // writeLog() writes a line to the log file like: "<date and time> [llevel] - <text>"
 void writeLog(std::string & text, enum LOG_LINE_LEVEL llevel = DEBUG);
 
+// The actual classifiers
+cv::CascadeClassifier ff_classifier; // frontal face classifier
+cv::CascadeClassifier pf_classifier; // profile face classifier
+cv::CascadeClassifier fb_classifier; // full body classifier
+cv::CascadeClassifier ub_classifier; // upper body classifier
+cv::CascadeClassifier lb_classifier; // lower body classifier
+
+// Vectors of rects returned by the classifiers
+std::vector<cv::Rect> ff_detected;
+std::vector<cv::Rect> pf_detected;
+std::vector<cv::Rect> fb_detected;
+std::vector<cv::Rect> ub_detected;
+std::vector<cv::Rect> lb_detected;
+
+unsigned int tot_det_ff;
+unsigned int tot_det_pf;
+unsigned int tot_det_fb;
+unsigned int tot_det_ub;
+unsigned int tot_det_lb;
+
 // Prototype for the fuctions used to detect people
 void detectPeople(cv::Mat);
 
-void setupClassifier(cv::CascadeClassifier & classifier, std::string model, std::string cname_for_log);
+bool setupClassifier(cv::CascadeClassifier & classifier, std::string model, std::string cname_for_log);
 std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier & cclassifier, std::string short_name_for_log, unsigned int * tot_det, int ecode);
-// -------------------------------------------------------------------------------------------------
 
 bool setup(void)
 {
 	using namespace std;
 
+	// Open the log file unless LOG_LEVEL is NO_LOG
 	if (LOG_LEVEL < NO_LOG)
 	{
 		ofstream log_file(LOG_FILE_NAME, ios_base::out);
 		log_file << endl;
 	}
 
-	// 1 - setup the classifiers
-	// 2 - complete initial setup
+	// Try to load the models into the classifiers
+	if (USING_FF_CLASSIFIER && !setupClassifier(ff_classifier, FRONTAL_FACE_MODEL, "ff_model")) return false;
+	if (USING_PF_CLASSIFIER && !setupClassifier(pf_classifier, PROFILE_FACE_MODEL, "pf_model")) return false;
+	if (USING_FB_CLASSIFIER && !setupClassifier(fb_classifier, FULL_BODY_MODEL   , "fb_model")) return false;
+	if (USING_UB_CLASSIFIER && !setupClassifier(ub_classifier, UPPER_BODY_MODEL  , "ub_model")) return false;
+	if (USING_LB_CLASSIFIER && !setupClassifier(lb_classifier, LOWER_BODY_MODEL  , "lb_model")) return false;
 
+	tot_det_ff = 0;
+	tot_det_pf = 0;
+	tot_det_fb = 0;
+	tot_det_ub = 0;
+	tot_det_lb = 0;
+	
 	return true;
 }
 
@@ -120,53 +149,22 @@ void captureImage(unsigned char *pixelDataSx, unsigned char *pixelDataDx, int w,
 	cv::flip(camDx, flippedDx, 0);
 	cv::cvtColor(flippedDx, flippedDx, cv::COLOR_RGB2BGR);
 
-	//DO NOT ENABLE THESE UNLESS FOR TESTING PURPOSE!
-	//cv::imwrite("leftcam.jpg", flippedSx);
-	//cv::imwrite("rightcam.jpg", flippedDx);
+	if (LOG_LEVEL == EVERYTHING_ENABLED)
+	{
+		cv::imwrite("leftcam.jpg", flippedSx);
+		cv::imwrite("rightcam.jpg", flippedDx);
+	}
 
-	// -------------------------------------------------------------------------------------------------
 	detectPeople(flippedSx);
-	// -------------------------------------------------------------------------------------------------
 }
 
-// -------------------------------------------------------------------------------------------------
 void detectPeople(cv::Mat frame_in)
 {
 	using namespace std;
 	using namespace cv;
 
-	// The actual classifiers
-	static cv::CascadeClassifier ff_classifier; // frontal face classifier
-	static cv::CascadeClassifier pf_classifier; // profile face classifier
-	static cv::CascadeClassifier fb_classifier; // full body classifier
-	static cv::CascadeClassifier ub_classifier; // upper body classifier
-	static cv::CascadeClassifier lb_classifier; // lower body classifier
-
 	// DEBUG: The output frame used to see detection results
 	Mat frame_out;
-
-	// Vectors of rects returned by the classifiers
-	vector<Rect> ff_detected;
-	vector<Rect> pf_detected;
-	vector<Rect> fb_detected;
-	vector<Rect> ub_detected;
-	vector<Rect> lb_detected;
-
-	static unsigned int tot_det_ff = 0;
-	static unsigned int tot_det_pf = 0;
-	static unsigned int tot_det_fb = 0;
-	static unsigned int tot_det_ub = 0;
-	static unsigned int tot_det_lb = 0;
-	
-	// this code section must stay here untill simulator doesn't call setup()
-	{
-		// Quit application unless loading classifier models can be completed
-		if (USING_FF_CLASSIFIER && ff_classifier.empty()) setupClassifier(ff_classifier, FRONTAL_FACE_MODEL, "ff_model");
-		if (USING_PF_CLASSIFIER && pf_classifier.empty()) setupClassifier(pf_classifier, PROFILE_FACE_MODEL, "pf_model");
-		if (USING_FB_CLASSIFIER && fb_classifier.empty()) setupClassifier(fb_classifier, FULL_BODY_MODEL,    "fb_model");
-		if (USING_UB_CLASSIFIER && ub_classifier.empty()) setupClassifier(ub_classifier, UPPER_BODY_MODEL,   "ub_model");
-		if (USING_LB_CLASSIFIER && lb_classifier.empty()) setupClassifier(lb_classifier, LOWER_BODY_MODEL,   "lb_model");
-	}
 	
 	if (frame_in.empty())
 	{
@@ -239,7 +237,7 @@ std::string getCurrentDateTime()
 	return st;
 }
 
-void setupClassifier(cv::CascadeClassifier & cclassifier, std::string model, std::string cname_for_log)
+bool setupClassifier(cv::CascadeClassifier & cclassifier, std::string model, std::string cname_for_log)
 {
 	using namespace std;
 
@@ -258,7 +256,7 @@ void setupClassifier(cv::CascadeClassifier & cclassifier, std::string model, std
 		oss << "!";
 		writeLog(oss.str(), ERROR);
 		
-		assert(false);
+		return false;
 	}
 	else
 	{
@@ -267,7 +265,8 @@ void setupClassifier(cv::CascadeClassifier & cclassifier, std::string model, std
 		writeLog(oss.str());
 	}
 
-	LOG_DIV_LINE
+	LOG_DIV_LINE;
+	return true;
 }
 
 std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier & cclassifier, std::string short_name_for_log, unsigned int * tot_det, int ecode)
@@ -326,4 +325,3 @@ std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier 
 
 	return detected;
 }
-// -------------------------------------------------------------------------------------------------
