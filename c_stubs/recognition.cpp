@@ -47,11 +47,11 @@ This error codes will be written in the log file unless the program crashes
 #define UPPER_BODY_MODEL   "haarcascades\\haarcascade_upperbody.xml"
 #define LOWER_BODY_MODEL   "haarcascades\\haarcascade_lowerbody.xml"
 
-#define USING_FF_CLASSIFIER false
-#define USING_PF_CLASSIFIER false
+#define USING_FF_CLASSIFIER true
+#define USING_PF_CLASSIFIER true
 #define USING_FB_CLASSIFIER false
 #define USING_UB_CLASSIFIER true
-#define USING_LB_CLASSIFIER false
+#define USING_LB_CLASSIFIER true
 
 // LOG FILE
 #define LOG_FILE_NAME    "log_recognition_dll.txt"								// Name of the log file
@@ -77,11 +77,26 @@ void writeLog(std::string & text, enum LOG_LINE_LEVEL llevel = DEBUG);
 
 // Prototype for the fuctions used to detect people
 void detectPeople(cv::Mat);
-void setup();
 
 void setupClassifier(cv::CascadeClassifier & classifier, std::string model, std::string cname_for_log);
 std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier & cclassifier, std::string short_name_for_log, unsigned int * tot_det, int ecode);
 // -------------------------------------------------------------------------------------------------
+
+bool setup(void)
+{
+	using namespace std;
+
+	if (LOG_LEVEL < NO_LOG)
+	{
+		ofstream log_file(LOG_FILE_NAME, ios_base::out);
+		log_file << endl;
+	}
+
+	// 1 - setup the classifiers
+	// 2 - complete initial setup
+
+	return true;
+}
 
 void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, float delta)
 {
@@ -91,17 +106,26 @@ void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, 
 	*angularAcc = 0;
 }
 
-void captureImage(unsigned char *pixelData, int w, int h, int stride, bool isLeft, float delta)
+void captureImage(unsigned char *pixelDataSx, unsigned char *pixelDataDx, int w, int h, int stride, float delta)
 {
-	cv::Mat cam(h, w, CV_8UC3, pixelData);
-	cv::Mat flipped;
-	cv::flip(cam, flipped, 0);
-	cv::cvtColor(flipped, flipped, cv::COLOR_RGB2BGR);
+	//sx cam
+	cv::Mat camSx(h, w, CV_8UC3, pixelDataSx);
+	cv::Mat flippedSx;
+	cv::flip(camSx, flippedSx, 0);
+	cv::cvtColor(flippedSx, flippedSx, cv::COLOR_RGB2BGR);
 
-	//cv::imwrite(isLeft ? "leftcam.jpg" : "rightcam.jpg", flipped);	//DO NOT ENABLE THIS UNLESS FOR TESTING PURPOSE!
+	//dx cam
+	cv::Mat camDx(h, w, CV_8UC3, pixelDataDx);
+	cv::Mat flippedDx;
+	cv::flip(camDx, flippedDx, 0);
+	cv::cvtColor(flippedDx, flippedDx, cv::COLOR_RGB2BGR);
+
+	//DO NOT ENABLE THESE UNLESS FOR TESTING PURPOSE!
+	//cv::imwrite("leftcam.jpg", flippedSx);
+	//cv::imwrite("rightcam.jpg", flippedDx);
 
 	// -------------------------------------------------------------------------------------------------
-	if(isLeft) detectPeople(flipped);
+	detectPeople(flippedSx);
 	// -------------------------------------------------------------------------------------------------
 }
 
@@ -213,21 +237,6 @@ std::string getCurrentDateTime()
 	strftime(st, buff_size, DATE_TIME_FORMAT, timeinfo);
 
 	return st;
-}
-
-void setup()
-{
-	using namespace std;
-
-	if (LOG_LEVEL < NO_LOG)
-	{
-		ofstream log_file(LOG_FILE_NAME, ios_base::out);
-		log_file << endl;
-	}
-
-	// 0 - open log file
-	// 1 - setup the classifiers
-	// 2 - complete initial setup
 }
 
 void setupClassifier(cv::CascadeClassifier & cclassifier, std::string model, std::string cname_for_log)

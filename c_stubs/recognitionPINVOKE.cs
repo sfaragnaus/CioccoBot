@@ -211,9 +211,12 @@ class recognitionPINVOKE {
   [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_pixelArray_setitem")]
   public static extern void pixelArray_setitem(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, byte jarg3);
 
+  [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_setup")]
+  public static extern bool setup();
+
   [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_kinematicInfo")]
   public static extern void kinematicInfo(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2, global::System.Runtime.InteropServices.HandleRef jarg3, global::System.Runtime.InteropServices.HandleRef jarg4, float jarg5);
 
   [global::System.Runtime.InteropServices.DllImport("recognition", EntryPoint="CSharp_captureImage")]
-  public static extern void captureImage(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, int jarg3, int jarg4, bool jarg5, float jarg6);
+  public static extern void captureImage(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2, int jarg3, int jarg4, int jarg5, float jarg6);
 }
