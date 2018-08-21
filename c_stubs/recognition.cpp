@@ -1,17 +1,20 @@
 /* USAGE INFOS (IT)
 
+ -- log -------------------------------------
+ - Per visualizzare le informazioni di debug nel file di log bisogna impostare il valore della macro
+	LOG_LEVEL a DEBUG
+
+ - Per salvare le immagini è necessario impostare il valore della macro LOG_LEVEL a EVERYTHING_ENABLED
+
+ -- detection -------------------------------
  - Nella directory in cui è presente questa libreria dev'essere presente una directory 'haarcascades\'
     contenente i file xml con le informazioni necessarie ai vari classificatori
 
  - Per utilizzare i diversi classificatori è necessario attivarli, impostando a "true" le macro
-    USING_ definite poco più in basso
+    USING_xx_CLASSIFIER
 
- - Per visualizzare le informazioni di debug nel file di log bisogna impostare il valore della macro
-	LOG_LEVEL a DEBUG
-
- - Per salvare le immagini relative alla porzione di immagine in cui viene effettuata la detezione da
-	parte dei vari classificatori, è necessario impostare il valore della macro LOG_LEVEL a EVERYTHING_ENABLED
-
+ -- identifying -----------------------------
+ -- tracking --------------------------------
 */
 
 /*
@@ -21,13 +24,14 @@ This error codes will be written in the log file unless the program crashes
 -- 1xx GASPARE ------------------------------
 
  -- detection -------------------------------
-  101 ff_classifier try-catch undefined error
-  102 pf_classifier try-catch undefined error
-  103 fb_classifier try-catch undefined error
-  104 ub_classifier try-catch undefined error
-  105 lb_classifier try-catch undefined error
+  101 - FF_ERROR_CODE - ff_classifier try-catch undefined error
+  102 - PF_ERROR_CODE - pf_classifier try-catch undefined error
+  103 - FB_ERROR_CODE - fb_classifier try-catch undefined error
+  104 - UB_ERROR_CODE - ub_classifier try-catch undefined error
+  105 - LB_ERROR_CODE - lb_classifier try-catch undefined error
 
  -- identifying -----------------------------
+ -- tracking --------------------------------
 */
 
 #include "recognition.h"
@@ -39,31 +43,55 @@ This error codes will be written in the log file unless the program crashes
 #include <opencv2/objdetect/objdetect.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-// Some macros with names of classifiers used to detect the user
-#define FRONTAL_FACE_MODEL "haarcascades\\haarcascade_frontalface_alt2.xml"
-#define PROFILE_FACE_MODEL "haarcascades\\haarcascade_profileface.xml"
-#define FULL_BODY_MODEL    "haarcascades\\haarcascade_fullbody.xml"
-#define UPPER_BODY_MODEL   "haarcascades\\haarcascade_upperbody.xml"
-#define LOWER_BODY_MODEL   "haarcascades\\haarcascade_lowerbody.xml"
+// Macros defining the names of classifiers used to detect the people
+#define FRONTAL_FACE_MODEL "haarcascades\\haarcascade_frontalface_alt2.xml" // ff_model relative path
+#define PROFILE_FACE_MODEL "haarcascades\\haarcascade_profileface.xml"      // pf_model relative path
+#define FULL_BODY_MODEL    "haarcascades\\haarcascade_fullbody.xml"         // fb_model relative path
+#define UPPER_BODY_MODEL   "haarcascades\\haarcascade_upperbody.xml"        // ub_model relative path
+#define LOWER_BODY_MODEL   "haarcascades\\haarcascade_lowerbody.xml"        // lb_model relative path
 
+// Macros that enable classifiers
 #define USING_FF_CLASSIFIER false
 #define USING_PF_CLASSIFIER false
 #define USING_FB_CLASSIFIER false
 #define USING_UB_CLASSIFIER true
 #define USING_LB_CLASSIFIER false
 
-// LOG FILE
-#define LOG_FILE_NAME    "log_recognition_dll.txt"								// Name of the log file
-#define DATE_TIME_FORMAT "%y-%m-%d %I:%M%p "									// Format to use to write date and time to the log file
+// Error codes written by the detection algorithm
+#define FF_ERROR_CODE 101 // ff_classifier try-catch undefined error
+#define PF_ERROR_CODE 102 // pf_classifier try-catch undefined error
+#define FB_ERROR_CODE 103 // fb_classifier try-catch undefined error
+#define UB_ERROR_CODE 104 // ub_classifier try-catch undefined error
+#define LB_ERROR_CODE 105 // lb_classifier try-catch undefined error
 
-#define LOG_DIV_LINE writeLog(string("-------------------------------------------------------------------------------------"), NO_LOG);
+// NB: attualmente viene definita ma non utilizzata, in attesa che l'algoritmo venga implementato
+// Values used by the tracking algorithm to follow the user
+#define POSITION_DELTA   1.0f // [m] represents the distance from the user that must be reached
+#define POSITION_EPSILON 0.1f // [m] represents the maximum acceptable positioning error
+
+/*
+	The distance from an object is computed using the formula:
+	 <distance> = <distance between cameras> * <focal length> / <disparity>
+	where disparity is the distance in pixels between the same point in the two pictures
+*/
+#define DISTANCE_BETWEEN_CAMERAS 0.04f // [m] Distance between the two cameras
+#define CAMERAS_FOCAL_LENGHT	 0.02f // [m] focal length of the two cameras (PS: must be the same)
+
+// LOG FILE
+#define LOG_FILE_NAME    "log_recognition_dll.txt" // Name of the log file
+#define DATE_TIME_FORMAT "%y-%m-%d %I:%M%p "       // Format to use to write date and time to the log file
+
+#define PX2M(px_val) (px_val * 0.000265f) // Converts a value from pixels to meters
+
+#define LOG_DIV_LINE writeLog(std::string("-------------------------------------------------------------------------------------"), FORMAT);
 
 // Set of possible log levels
-enum LOG_LINE_LEVEL { EVERYTHING_ENABLED	=   0 ,
-					  DEBUG					=   5 ,
-					  WARNING				=  10 ,
-					  ERROR					=  15 ,
-					  NO_LOG				= 100 };
+enum LOG_LINE_LEVEL { EVERYTHING_ENABLED	=   0 ,  // Enable all possible debug log (including img saving)
+					  DEBUG					=   5 ,  // Enable all log text lines
+					  WARNING				=  10 ,  // Enable only log text lines marked as warning or error
+					  ERROR					=  15 ,  // Enable only log text lines marked as error
+					  FORMAT                =  95 ,  // Write log text lines used to make the log file much readable
+					  NO_LOG				= 100 }; // Donìt write the log file at all
 
 // LOG_LEVEL indicates the minimum line level for which it will be written a line to the log file
 const enum LOG_LINE_LEVEL LOG_LEVEL = WARNING;
@@ -82,33 +110,28 @@ cv::CascadeClassifier ub_classifier; // upper body classifier
 cv::CascadeClassifier lb_classifier; // lower body classifier
 
 // Vectors of rects returned by the classifiers
-std::vector<cv::Rect> ff_detected;
-std::vector<cv::Rect> pf_detected;
-std::vector<cv::Rect> fb_detected;
-std::vector<cv::Rect> ub_detected;
-std::vector<cv::Rect> lb_detected;
+std::vector<cv::Rect> ff_detected_l, ff_detected_r; // frontal faces detected
+std::vector<cv::Rect> pf_detected_l, pf_detected_r; // profile faces detected
+std::vector<cv::Rect> fb_detected_l, fb_detected_r; // full bodies   detected
+std::vector<cv::Rect> ub_detected_l, ub_detected_r; // upper bodies  detected
+std::vector<cv::Rect> lb_detected_l, lb_detected_r; // lower bodies  detected
 
-unsigned int tot_det_ff;
-unsigned int tot_det_pf;
-unsigned int tot_det_fb;
-unsigned int tot_det_ub;
-unsigned int tot_det_lb;
+unsigned int tot_det_ff_l, tot_det_pf_l, tot_det_fb_l, tot_det_ub_l, tot_det_lb_l; // total detections counter (left)
+unsigned int tot_det_ff_r, tot_det_pf_r, tot_det_fb_r, tot_det_ub_r, tot_det_lb_r; // total detections counter (right)
 
 // Prototype for the fuctions used to detect people
-void detectPeople(cv::Mat);
+void detectPeople(cv::Mat, cv::Mat);
 
 bool setupClassifier(cv::CascadeClassifier & classifier, std::string model, std::string cname_for_log);
 std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier & cclassifier, std::string short_name_for_log, unsigned int * tot_det, int ecode);
 
 bool setup(void)
 {
-	using namespace std;
-
 	// Open the log file unless LOG_LEVEL is NO_LOG
 	if (LOG_LEVEL < NO_LOG)
 	{
-		ofstream log_file(LOG_FILE_NAME, ios_base::out);
-		log_file << endl;
+		std::ofstream log_file(LOG_FILE_NAME, std::ios_base::out);
+		log_file << std::endl;
 	}
 
 	// Try to load the models into the classifiers
@@ -118,11 +141,9 @@ bool setup(void)
 	if (USING_UB_CLASSIFIER && !setupClassifier(ub_classifier, UPPER_BODY_MODEL  , "ub_model")) return false;
 	if (USING_LB_CLASSIFIER && !setupClassifier(lb_classifier, LOWER_BODY_MODEL  , "lb_model")) return false;
 
-	tot_det_ff = 0;
-	tot_det_pf = 0;
-	tot_det_fb = 0;
-	tot_det_ub = 0;
-	tot_det_lb = 0;
+	// Initialyze total detection counters to 0
+	tot_det_ff_l = tot_det_pf_l = tot_det_fb_l = tot_det_ub_l = tot_det_lb_l = 0;
+	tot_det_ff_r = tot_det_pf_r = tot_det_fb_r = tot_det_ub_r = tot_det_lb_r = 0;
 	
 	return true;
 }
@@ -133,6 +154,30 @@ void kinematicInfo(float *speed, float *acc, float *angular, float *angularAcc, 
 	*acc = 0;
 	*angular = 0;
 	*angularAcc = 0;
+}
+
+void test(cv::Mat l_img, cv::Mat r_img)
+{
+	// convert color to grayscale
+	cv::cvtColor(l_img, l_img, cv::COLOR_BGR2GRAY);
+	cv::cvtColor(r_img, r_img, cv::COLOR_BGR2GRAY);
+
+	if (ub_detected_l.size() && ub_detected_r.size())
+	{
+		writeLog(std::string("Detected something on both picture, trying to compute distance"));
+		
+		float x1 = ub_detected_l.at(0).x + ub_detected_l.at(0).width / 2;
+		float x2 = ub_detected_r.at(0).x + ub_detected_r.at(0).width / 2;
+		
+		float disparity = abs(x1 - x2);
+
+		float distance = DISTANCE_BETWEEN_CAMERAS * CAMERAS_FOCAL_LENGHT / PX2M(disparity);
+		
+		std::ostringstream oss;
+		oss << "computed distance: " << distance << " m";
+		writeLog(oss.str());
+	}
+
 }
 
 void captureImage(unsigned char *pixelDataSx, unsigned char *pixelDataDx, int w, int h, int stride, float delta)
@@ -155,47 +200,51 @@ void captureImage(unsigned char *pixelDataSx, unsigned char *pixelDataDx, int w,
 		cv::imwrite("rightcam.jpg", flippedDx);
 	}
 
-	detectPeople(flippedSx);
+	detectPeople(flippedSx, flippedDx);
+
+	test(flippedSx, flippedDx);
+
+	LOG_DIV_LINE;
 }
 
-void detectPeople(cv::Mat frame_in)
-{
-	using namespace std;
-	using namespace cv;
-
-	// DEBUG: The output frame used to see detection results
-	Mat frame_out;
-	
-	if (frame_in.empty())
+void detectPeople(cv::Mat frame_l, cv::Mat frame_r)
+{	
+	if (frame_l.empty() || frame_r.empty())
 	{
-		writeLog(string("Received an empty frame!!"), WARNING);
+		writeLog(std::string("Received an empty frame!!"), WARNING);
 		return;
 	}
 
-	cvtColor(frame_in, frame_in, COLOR_BGR2GRAY);
-	equalizeHist(frame_in, frame_in);
-	writeLog(string("converted input image from BGR to grayscale"));
+	cv::cvtColor(frame_l, frame_l, cv::COLOR_BGR2GRAY);
+	cv::equalizeHist(frame_l, frame_l);
+	writeLog(std::string("converted input image (L) from BGR to grayscale"));
 
-	if (USING_FF_CLASSIFIER) ff_detected = detectWithClassifier(frame_in, ff_classifier, "ff", &tot_det_ff, 101);
-	if (USING_PF_CLASSIFIER) pf_detected = detectWithClassifier(frame_in, pf_classifier, "pf", &tot_det_pf, 102);
-	if (USING_FB_CLASSIFIER) fb_detected = detectWithClassifier(frame_in, fb_classifier, "fb", &tot_det_fb, 103);
-	if (USING_UB_CLASSIFIER) ub_detected = detectWithClassifier(frame_in, ub_classifier, "ub", &tot_det_ub, 104);
-	if (USING_LB_CLASSIFIER) lb_detected = detectWithClassifier(frame_in, lb_classifier, "lb", &tot_det_lb, 105);
+	cv::cvtColor(frame_r, frame_r, cv::COLOR_BGR2GRAY);
+	cv::equalizeHist(frame_r, frame_r);
+	writeLog(std::string("converted input image (R) from BGR to grayscale"));
 
-	//imwrite("output_image.jpg", frame_out);
+	// detect people in the left image
+	if (USING_FF_CLASSIFIER) ff_detected_l = detectWithClassifier(frame_l, ff_classifier, "ff", &tot_det_ff_l, FF_ERROR_CODE);
+	if (USING_PF_CLASSIFIER) pf_detected_l = detectWithClassifier(frame_l, pf_classifier, "pf", &tot_det_pf_l, PF_ERROR_CODE);
+	if (USING_FB_CLASSIFIER) fb_detected_l = detectWithClassifier(frame_l, fb_classifier, "fb", &tot_det_fb_l, FB_ERROR_CODE);
+	if (USING_UB_CLASSIFIER) ub_detected_l = detectWithClassifier(frame_l, ub_classifier, "ub", &tot_det_ub_l, UB_ERROR_CODE);
+	if (USING_LB_CLASSIFIER) lb_detected_l = detectWithClassifier(frame_l, lb_classifier, "lb", &tot_det_lb_l, LB_ERROR_CODE);
 
-	LOG_DIV_LINE
+	// detect people in the left image
+	if (USING_FF_CLASSIFIER) ff_detected_r = detectWithClassifier(frame_r, ff_classifier, "ff", &tot_det_ff_r, FF_ERROR_CODE);
+	if (USING_PF_CLASSIFIER) pf_detected_r = detectWithClassifier(frame_r, pf_classifier, "pf", &tot_det_pf_r, PF_ERROR_CODE);
+	if (USING_FB_CLASSIFIER) fb_detected_r = detectWithClassifier(frame_r, fb_classifier, "fb", &tot_det_fb_r, FB_ERROR_CODE);
+	if (USING_UB_CLASSIFIER) ub_detected_r = detectWithClassifier(frame_r, ub_classifier, "ub", &tot_det_ub_r, UB_ERROR_CODE);
+	if (USING_LB_CLASSIFIER) lb_detected_r = detectWithClassifier(frame_r, lb_classifier, "lb", &tot_det_lb_r, LB_ERROR_CODE);
 }
 
 void writeLog(std::string & text, enum LOG_LINE_LEVEL llevel)
-{
-	using namespace std;
-	
+{	
 	// Do not write if LOG_LEVEL is greater than the line level
 	if (llevel < LOG_LEVEL) return;
 
 	// Prepare a string with an indication of the line level
-	string log_level;
+	std::string log_level;
 	switch (llevel)
 	{
 	case DEBUG:
@@ -207,19 +256,21 @@ void writeLog(std::string & text, enum LOG_LINE_LEVEL llevel)
 	case ERROR:
 		log_level = "[E]";
 		break;
+	case FORMAT:
+		log_level = "[F]";
+		break;
 	case NO_LOG:
 	default: // Shouldn't be triggered
-		log_level = "[] ";
-		break;
+		return;
 	}
 	
 	// Open a stream to the log file
-	ofstream log_file(LOG_FILE_NAME, ios_base::out | ios_base::app);
+	std::ofstream log_file(LOG_FILE_NAME, std::ios_base::out | std::ios_base::app);
 	log_file << getCurrentDateTime();	// write the current date and time
 	log_file << log_level;				// write the line level
 	log_file << " - ";					// write a separator
 	log_file << text;					// write the log text
-	log_file << endl;					// flush
+	log_file << std::endl;				// flush
 }
 
 std::string getCurrentDateTime()
@@ -271,11 +322,8 @@ bool setupClassifier(cv::CascadeClassifier & cclassifier, std::string model, std
 
 std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier & cclassifier, std::string short_name_for_log, unsigned int * tot_det, int ecode)
 {
-	using namespace std;
-	using namespace cv;
-
-	ostringstream oss;
-	vector<Rect> detected;
+	std::ostringstream oss;
+	std::vector<cv::Rect> detected;
 
 	try
 	{
@@ -307,7 +355,7 @@ std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier 
 
 	for (size_t i = 0; i < detected.size(); ++i)
 	{
-		ostringstream file_name;
+		std::ostringstream file_name;
 		file_name << "detection_";
 		file_name << short_name_for_log;
 		file_name << "_";
@@ -324,4 +372,9 @@ std::vector<cv::Rect> detectWithClassifier(cv::Mat frame, cv::CascadeClassifier 
 	}
 
 	return detected;
+}
+
+float computeDistance()
+{
+	return POSITION_DELTA;
 }
